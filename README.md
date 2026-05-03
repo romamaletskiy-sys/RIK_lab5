@@ -71,7 +71,3 @@ npm run dev
 ```bash
 npm run build
 ```
-
-## Скріншот
-
-![Головна сторінка](https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&auto=format&fit=crop)
