@@ -9,6 +9,15 @@ const emptyForm = {
   description: "",
 };
 
+// Читає File як base64 data URL (зберігається в localStorage)
+function readAsDataURL(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.readAsDataURL(file);
+  });
+}
+
 function AddModelForm({ onAdd, onEdit, initialData, onClose }) {
   const isEdit = Boolean(initialData);
 
@@ -24,17 +33,19 @@ function AddModelForm({ onAdd, onEdit, initialData, onClose }) {
       : emptyForm
   );
   const [errors, setErrors] = useState({});
+
+  // imagePreview — тепер завжди base64 data URL або існуючий URL
   const [imagePreview, setImagePreview] = useState(
     isEdit ? initialData.image || null : null
   );
-  const [imageFile, setImageFile] = useState(null);
   const [imageCleared, setImageCleared] = useState(false);
-  const [stlFile, setStlFile] = useState(null);
-  const [existingStlName, setExistingStlName] = useState(
-    isEdit ? initialData.stlName || null : null
-  );
-  const [existingStlUrl, setExistingStlUrl] = useState(
+
+  // STL: зберігаємо base64 data URL + назву файлу
+  const [stlDataUrl, setStlDataUrl] = useState(
     isEdit ? initialData.stlUrl || null : null
+  );
+  const [stlName, setStlName] = useState(
+    isEdit ? initialData.stlName || null : null
   );
 
   const imageInputRef = useRef(null);
@@ -46,35 +57,33 @@ function AddModelForm({ onAdd, onEdit, initialData, onClose }) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleImageChange = (e) => {
+  // Конвертуємо фото у base64 відразу при виборі
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (imagePreview && !isEdit) URL.revokeObjectURL(imagePreview);
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    const dataUrl = await readAsDataURL(file);
+    setImagePreview(dataUrl);
     setImageCleared(false);
   };
 
   const handleRemoveImage = () => {
-    if (imageFile && imagePreview) URL.revokeObjectURL(imagePreview);
     setImagePreview(null);
-    setImageFile(null);
     setImageCleared(true);
     if (imageInputRef.current) imageInputRef.current.value = "";
   };
 
-  const handleStlChange = (e) => {
+  // Конвертуємо STL/3MF у base64 відразу при виборі
+  const handleStlChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setStlFile(file);
-    setExistingStlName(null);
-    setExistingStlUrl(null);
+    const dataUrl = await readAsDataURL(file);
+    setStlDataUrl(dataUrl);
+    setStlName(file.name);
   };
 
   const handleRemoveStl = () => {
-    setStlFile(null);
-    setExistingStlName(null);
-    setExistingStlUrl(null);
+    setStlDataUrl(null);
+    setStlName(null);
     if (stlInputRef.current) stlInputRef.current.value = "";
   };
 
@@ -95,20 +104,11 @@ function AddModelForm({ onAdd, onEdit, initialData, onClose }) {
       return;
     }
 
-    const finalImage = imageFile
-      ? URL.createObjectURL(imageFile)
-      : imageCleared
-      ? null
-      : imagePreview;
-
-    const finalStlUrl = stlFile ? URL.createObjectURL(stlFile) : existingStlUrl;
-    const finalStlName = stlFile ? stlFile.name : existingStlName;
-
     const modelData = {
       ...form,
-      image: finalImage,
-      stlUrl: finalStlUrl,
-      stlName: finalStlName,
+      image: imageCleared ? null : imagePreview,
+      stlUrl: stlDataUrl,
+      stlName: stlName,
     };
 
     if (isEdit) {
@@ -262,11 +262,9 @@ function AddModelForm({ onAdd, onEdit, initialData, onClose }) {
                 style={{ display: "none" }}
                 onChange={handleStlChange}
               />
-              {stlFile || existingStlName ? (
+              {stlName ? (
                 <div className="file-attached">
-                  <span className="file-attached-name">
-                    📎 {stlFile ? stlFile.name : existingStlName}
-                  </span>
+                  <span className="file-attached-name">📎 {stlName}</span>
                   <button
                     type="button"
                     className="file-upload-btn-inline"

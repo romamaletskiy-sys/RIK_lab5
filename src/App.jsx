@@ -1,7 +1,7 @@
 // Головний компонент застосунку
 // Керує станом фільтру, списком моделей та станом відкритої модалки
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { models as initialModels, materials } from "./data/models";
 import FilterBar from "./components/FilterBar";
 import ModelCard from "./components/ModelCard";
@@ -10,8 +10,16 @@ import AddModelForm from "./components/AddModelForm";
 import "./App.css";
 
 function App() {
-  // Стан списку моделей — ініціалізується mock-даними, але може змінюватись
-  const [models, setModels] = useState(initialModels);
+  // Стан списку моделей — при першому завантаженні беремо з localStorage,
+  // якщо там нічого немає — використовуємо mock-дані
+  const [models, setModels] = useState(() => {
+    try {
+      const saved = localStorage.getItem("3d-catalog-models");
+      return saved ? JSON.parse(saved) : initialModels;
+    } catch {
+      return initialModels;
+    }
+  });
 
   // Стан активного фільтру матеріалу (за замовчуванням "Всі")
   const [activeFilter, setActiveFilter] = useState("Всі");
@@ -27,6 +35,15 @@ function App() {
 
   // Стан пошукового запиту
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Зберігаємо моделі в localStorage при кожній зміні
+  useEffect(() => {
+    try {
+      localStorage.setItem("3d-catalog-models", JSON.stringify(models));
+    } catch {
+      // ігноруємо помилки квоти localStorage
+    }
+  }, [models]);
 
   // Додавання нової моделі — додаємо об'єкт на початок масиву
   const handleAdd = (newModel) => {
